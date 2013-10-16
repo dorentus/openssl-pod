@@ -6,7 +6,6 @@ OPENSSL_VERSION='1.0.1e'
 OPENSSL_TARBALL="http://www.openssl.org/source/openssl-#{OPENSSL_VERSION}.tar.gz"
 OPENSSL_SHA256='f74f15e8c8ff11aa3d5bb5f276d202ec18d7246e95f961db76054199c69c1ae3'
 
-CC="xcrun clang"
 iOS_DEVICE_SDK="`xcrun --sdk iphoneos --show-sdk-path`"
 iOS_SIMULATOR_SDK="`xcrun --sdk iphonesimulator --show-sdk-path`"
 
@@ -32,7 +31,7 @@ def inreplace paths, before=nil, after=nil
   end
 end
 
-def build arch, cc, sdk
+def build arch, sdk
   install_dir = File.join(Dir.pwd, arch)
 
   FileUtils.rm_rf "openssl-#{OPENSSL_VERSION}"
@@ -53,11 +52,8 @@ def build arch, cc, sdk
     system "./Configure #{target} --openssldir='#{install_dir}'"
 
     inreplace "crypto/ui/ui_openssl.c", "static volatile sig_atomic_t intr_signal", "static volatile int intr_signal"
-    inreplace "Makefile", "CC= gcc", "CC= #{cc} -arch #{arch} -miphoneos-version-min=#{ios_version_min}"
-    inreplace "Makefile", "CFLAG= ", "CFLAG= -isysroot #{sdk} "
-    inreplace "Makefile", "-O3", "-Ofast"
+    inreplace "Makefile", "CFLAG= ", "CFLAG= -isysroot #{sdk} -arch #{arch} -miphoneos-version-min=#{ios_version_min} "
 
-    system "make"
     system "make install"
   end
 
@@ -99,11 +95,11 @@ task :build => [:clean] do
       abort unless Digest::SHA256.hexdigest(File.read("openssl-#{OPENSSL_VERSION}.tar.gz")) == OPENSSL_SHA256
 
       build_array = [
-        build("armv7", CC, iOS_DEVICE_SDK),
-        build("armv7s", CC, iOS_DEVICE_SDK),
-        build("arm64", CC, iOS_DEVICE_SDK),
-        build("i386", CC, iOS_SIMULATOR_SDK),
-        build("x86_64", CC, iOS_SIMULATOR_SDK)
+        build("armv7", iOS_DEVICE_SDK),
+        build("armv7s", iOS_DEVICE_SDK),
+        build("arm64", iOS_DEVICE_SDK),
+        build("i386", iOS_SIMULATOR_SDK),
+        build("x86_64", iOS_SIMULATOR_SDK)
       ]
 
       FileUtils.cp_r File.join(build_array[0], 'include'), dist_dir
