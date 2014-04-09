@@ -6,8 +6,8 @@ OPENSSL_VERSION='1.0.1g'
 OPENSSL_TARBALL="https://www.openssl.org/source/openssl-#{OPENSSL_VERSION}.tar.gz"
 OPENSSL_SHA256='53cb818c3b90e507a8348f4f5eaedb05d8bfe5358aabb508b7263cc670c3e028'
 
-iOS_DEVICE_SDK="`xcrun --sdk iphoneos --show-sdk-path`"
-iOS_SIMULATOR_SDK="`xcrun --sdk iphonesimulator --show-sdk-path`"
+iOS_DEVICE_SDK=%x[xcrun --sdk iphoneos --show-sdk-path].strip
+iOS_SIMULATOR_SDK=%x[xcrun --sdk iphonesimulator --show-sdk-path].strip
 
 def inreplace paths, before=nil, after=nil
   Array(paths).each do |path|
