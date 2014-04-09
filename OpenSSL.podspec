@@ -1,13 +1,13 @@
 Pod::Spec.new do |s|
   s.name         = "OpenSSL"
-  s.version      = "1.0.1e"
+  s.version      = "1.0.1g"
   s.summary      = "OpenSSL for iOS."
   s.description  = "Supports iPhone Simulator (i386 & x86_64), armv7, armv7s and arm64."
   s.homepage     = "http://www.openssl.org"
-  s.license	     = 'OpenSSL (OpenSSL/SSLeay)'
+  s.license      = 'OpenSSL (OpenSSL/SSLeay)'
 
   s.author       = 'ZHANG Yi'
-  s.source       = { :git => "https://github.com/dorentus/openssl-pod.git", :tag => "1.0.1e" }
+  s.source       = { :git => "https://github.com/dorentus/openssl-pod.git", :tag => "1.0.1g" }
 
   s.prepare_command = 'rake'
 
