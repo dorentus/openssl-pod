@@ -2,9 +2,9 @@ require 'rake'
 require 'tmpdir'
 require 'digest'
 
-OPENSSL_VERSION='1.0.1g'
+OPENSSL_VERSION='1.1.0c'
 OPENSSL_TARBALL="https://www.openssl.org/source/openssl-#{OPENSSL_VERSION}.tar.gz"
-OPENSSL_SHA256='53cb818c3b90e507a8348f4f5eaedb05d8bfe5358aabb508b7263cc670c3e028'
+OPENSSL_SHA256='fc436441a2e05752d31b4e46115eb89709a28aef96d4fe786abe92409b2fd6f5'
 
 iOS_DEVICE_SDK=%x[xcrun --sdk iphoneos --show-sdk-path].strip
 iOS_SIMULATOR_SDK=%x[xcrun --sdk iphonesimulator --show-sdk-path].strip
@@ -38,21 +38,17 @@ def build arch, sdk
   system "tar zxf openssl-#{OPENSSL_VERSION}.tar.gz"
 
   target="BSD-generic32"
-  ios_version_min="4.0"
+  ios_version_min="7.0.0"
 
   if arch == 'arm64'
     target="BSD-generic64"
-    ios_version_min="7.0.0"
   elsif arch == "x86_64"
     target="BSD-x86_64 no-asm"
-    ios_version_min="7.0.0"
   end
 
   Dir.chdir("openssl-#{OPENSSL_VERSION}") do
     system "./Configure #{target} --openssldir='#{install_dir}'"
-
-    inreplace "crypto/ui/ui_openssl.c", "static volatile sig_atomic_t intr_signal", "static volatile int intr_signal"
-    inreplace "Makefile", "CFLAG= ", "CFLAG= -isysroot #{sdk} -arch #{arch} -miphoneos-version-min=#{ios_version_min} "
+    inreplace "Makefile", "CFLAG= ", "CFLAG= -fembed-bitcode -Qunused-arguments -isysroot #{sdk} -arch #{arch} -miphoneos-version-min=#{ios_version_min} "
 
     system "make install"
   end
@@ -96,7 +92,6 @@ task :build => [:clean] do
 
       build_array = [
         build("armv7", iOS_DEVICE_SDK),
-        build("armv7s", iOS_DEVICE_SDK),
         build("arm64", iOS_DEVICE_SDK),
         build("i386", iOS_SIMULATOR_SDK),
         build("x86_64", iOS_SIMULATOR_SDK)
@@ -109,4 +104,13 @@ task :build => [:clean] do
     end
   end
 
+  framework_dir = File.join(dist_dir, "openssl.framework")
+  framework_header_dir = File.join(framework_dir, "Headers")
+
+  FileUtils.mkdir_p framework_header_dir
+  Dir.glob(File.join(dist_dir, "include/openssl/*.h")).each do |h|
+    FileUtils.cp h, framework_header_dir
+  end
+
+  system "lipo", "-create", *Dir.glob(File.join(dist_dir, "**/*.a")), "-output", File.join(framework_dir, "openssl")
 end
