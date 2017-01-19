@@ -129,7 +129,7 @@ task :build => [:clean] do
       name = File.basename(file)
       archs ||= `lipo -info #{file}`.gsub(/Architectures in the fat file: .+ are: /, "").split(" ")
       archs.each do |arch|
-        FileUtils.mkdir "#{dir}/#{arch}" rescue
+        FileUtils.mkdir "#{dir}/#{arch}" rescue nil
         system "lipo -extract #{arch} #{file} -o #{dir}/#{arch}/#{name}"
       end
     end
