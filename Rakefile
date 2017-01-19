@@ -61,7 +61,7 @@ def build arch, sdk
     inreplace "Makefile", "-O3", "-Os"
     inreplace "Makefile", " -isysroot $(CROSS_TOP)/SDKs/$(CROSS_SDK)", ""
 
-    abort "build failed for arch #{arch}" unless system "make -j4 install_sw"
+    abort "build failed for arch #{arch}" unless system "make install_sw"
   end
 
   install_dir
