@@ -1,14 +1,15 @@
 require 'rake'
 require 'tmpdir'
 require 'digest'
+require 'fileutils'
 
 OPENSSL_VERSION ='1.1.0c'
 OPENSSL_TARBALL = ENV["OPENSSL_SRC_URL"] || "https://www.openssl.org/source/openssl-#{OPENSSL_VERSION}.tar.gz"
 OPENSSL_SHA256 = 'fc436441a2e05752d31b4e46115eb89709a28aef96d4fe786abe92409b2fd6f5'
 OPENSSL_PATCH = 'https://patch-diff.githubusercontent.com/raw/openssl/openssl/pull/1510.patch'
 
-iOS_DEVICE_SDK=%x[xcrun --sdk iphoneos --show-sdk-path].strip
-iOS_SIMULATOR_SDK=%x[xcrun --sdk iphonesimulator --show-sdk-path].strip
+SDK_iOS_DEVICE=%x[xcrun --sdk iphoneos --show-sdk-path].strip
+SDK_iOS_SIMULATOR=%x[xcrun --sdk iphonesimulator --show-sdk-path].strip
 
 def inreplace paths, before=nil, after=nil
   Array(paths).each do |path|
@@ -58,6 +59,7 @@ def build arch, sdk
     system "./Configure #{target} no-shared no-unit-test --prefix='#{install_dir}'"
     inreplace "Makefile", /^CFLAGS=/, "CFLAGS=#{cflag} "
     inreplace "Makefile", "-O3", "-Os"
+    inreplace "Makefile", " -isysroot $(CROSS_TOP)/SDKs/$(CROSS_SDK)", ""
 
     abort "build failed for arch #{arch}" unless system "make -j4 install_sw"
   end
@@ -100,10 +102,10 @@ task :build => [:clean] do
       abort unless Digest::SHA256.hexdigest(File.read("openssl-#{OPENSSL_VERSION}.tar.gz")) == OPENSSL_SHA256
 
       build_array = [
-        build("armv7", iOS_DEVICE_SDK),
-        build("arm64", iOS_DEVICE_SDK),
-        build("i386", iOS_SIMULATOR_SDK),
-        build("x86_64", iOS_SIMULATOR_SDK),
+        build("armv7", SDK_iOS_DEVICE),
+        build("arm64", SDK_iOS_DEVICE),
+        build("i386", SDK_iOS_SIMULATOR),
+        build("x86_64", SDK_iOS_SIMULATOR),
       ]
 
       FileUtils.cp_r File.join(build_array[0], 'include'), dist_dir
@@ -121,5 +123,25 @@ task :build => [:clean] do
     FileUtils.cp h, framework_header_dir
   end
 
-  system "lipo", "-create", *Dir.glob(File.join(dist_dir, "**/*.a")), "-output", File.join(framework_dir, "openssl")
+  Dir.mktmpdir do |dir|
+    archs = nil
+    Dir.glob(File.join(dist_dir, "lib/*.a")).each do |file|
+      name = File.basename(file)
+      archs ||= `lipo -info #{file}`.gsub(/Architectures in the fat file: .+ are: /, "").split(" ")
+      archs.each do |arch|
+        FileUtils.mkdir "#{dir}/#{arch}" rescue
+        system "lipo -extract #{arch} #{file} -o #{dir}/#{arch}/#{name}"
+      end
+    end
+
+    libs = archs.map do |arch|
+      Dir.chdir "#{dir}/#{arch}" do
+        system "libtool", "-static", *Dir.glob("*"), "-o", "openssl-#{arch}.a"
+      end
+
+      "#{dir}/#{arch}/openssl-#{arch}.a"
+    end
+
+    system "lipo", "-create", *libs, "-output", File.absolute_path(File.join(framework_dir, "openssl"))
+  end
 end
