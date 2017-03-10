@@ -56,7 +56,7 @@ def build arch, sdk
       system "git", "apply", "patch.patch"
     end
 
-    system "./Configure #{target} no-shared no-unit-test --prefix='#{install_dir}'"
+    system "./Configure #{target} no-shared no-unit-test no-async --prefix='#{install_dir}'"
     inreplace "Makefile", /^CFLAGS=/, "CFLAGS=#{cflag} "
     inreplace "Makefile", "-O3", "-Os"
     inreplace "Makefile", " -isysroot $(CROSS_TOP)/SDKs/$(CROSS_SDK)", ""
